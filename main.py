@@ -6,23 +6,22 @@
 import os
 from estatistica.correlacao import correlacao
 
-def antesDe2013(nomeArquivo) -> bool:
+def anoArquivo(nomeArquivo):
   caminhoArquivo = nomeArquivo.split('/')
   anoDoArquivo = caminhoArquivo[2].split('.')
   anoDoArquivo = int(anoDoArquivo[0])
 
-  if(anoDoArquivo > 2013):
+  return anoDoArquivo
+
+def antesDe2013(nomeArquivo) -> bool:
+  if(anoArquivo(nomeArquivo) > 2013):
     return True
 
   return False
 
 def escreverNoArquivo(nomeArquivo, correlacao):
-  caminhoArquivo = nomeArquivo.split('/')
-  anoDoArquivo = caminhoArquivo[2].split('.')
-  anoDoArquivo = anoDoArquivo[0]
-
   with open("resultado.txt", "a") as file:
-    text = anoDoArquivo + " --> " + str(correlacao) + "\n\r"
+    text = str(anoArquivo(nomeArquivo)) + " --> " + str(correlacao) + "\n\r"
     file.write(text)
     file.close()
 
@@ -30,15 +29,15 @@ def correlacaoIdadeMaexPesoFilho(nomeArquivo, idadeMae, pesoFilho):
   idade = []
   peso = []
 
-  with open(nomeArquivo, "rb") as file:
+  with open(nomeArquivo, "r") as file:
     rows = file.readlines()
 
   for i in range(len(rows)):
-    idadeMin = int(rows[i].decode()[idadeMae['posicaoInicial']:idadeMae['posicaoFinal']]) >= 13
-    idadeMax = int(rows[i].decode()[idadeMae['posicaoInicial']:idadeMae['posicaoFinal']]) <= 19
+    idadeMin = int(rows[i][idadeMae['posicaoInicial']:idadeMae['posicaoFinal']]) >= 13
+    idadeMax = int(rows[i][idadeMae['posicaoInicial']:idadeMae['posicaoFinal']]) <= 19
     if(idadeMin and idadeMax):
-      idade.append(float(rows[i].decode()[idadeMae['posicaoInicial']:idadeMae['posicaoFinal']]))
-      peso.append(float(rows[i].decode()[pesoFilho['posicaoInicial']:pesoFilho['posicaoFinal']]))
+      idade.append(float(rows[i][idadeMae['posicaoInicial']:idadeMae['posicaoFinal']]))
+      peso.append(float(rows[i][pesoFilho['posicaoInicial']:pesoFilho['posicaoFinal']]))
 
   resultado = correlacao(idade, peso)
 
@@ -54,11 +53,14 @@ def analiseArquivo(nomeArquivo, antesDe2013):
     posicaoPesoFilho = {'posicaoInicial': 462, 'posicaoFinal': 466}
     correlacaoIdadeMaexPesoFilho(nomeArquivo, posicaoIdadeMae, posicaoPesoFilho)
 
-def processoFilho(numeroProcesso, pastas, pastaRaiz):
+def processoFilho(numeroProcesso, maxProcessosParalelos, pastas, pastaRaiz):
+  print("Processo %i criado!"%(numeroProcesso+1))
+
   for i in range(numeroProcesso, len(pastas), maxProcessosParalelos):
     caminhoAtehArquivo = os.path.join(pastaRaiz, pastas[i])
     for j in os.listdir(caminhoAtehArquivo):
       nomeArquivo = os.path.join(caminhoAtehArquivo, j)
+      print("Processo %i --> %s"%(numeroProcesso+1, nomeArquivo))
       analiseArquivo(nomeArquivo, antesDe2013(nomeArquivo))
 
 pastaRaiz = "database"
@@ -67,13 +69,13 @@ pastas = os.listdir(pastaRaiz)
 
 for numeroProcesso in range(0, maxProcessosParalelos):
   if(os.fork() == 0):
-    processoFilho(numeroProcesso, pastas, pastaRaiz)
+    processoFilho(numeroProcesso, maxProcessosParalelos, pastas, pastaRaiz)
     exit(0)
 
 for numero in range(0, maxProcessosParalelos):
     os.wait()
 
-print("================================")
+print("\n====================================================")
 print("Análise concluída com sucesso!!!")
 print("Abrir o arquivo resultado.txt para ver os resultados")
-print("================================")
+print("====================================================")
